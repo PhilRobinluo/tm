@@ -3,7 +3,7 @@
 # tm 一键安装脚本
 # ================================================================
 # 使用方法：
-#   curl -sL https://你的链接/install.sh | bash
+#   curl -sL https://raw.githubusercontent.com/PhilRobinluo/tm/master/install.sh | bash
 #   或者下载后运行：bash install.sh
 # ================================================================
 
@@ -64,7 +64,7 @@ if [[ -f "$SCRIPT_DIR/tm" ]]; then
 else
     # 如果是通过 curl 管道运行的，从网络下载
     echo "  ${C}→ 下载 tm 脚本...${NC}"
-    curl -sL "https://raw.githubusercontent.com/你的用户名/tm/main/tm" -o "$INSTALL_DIR/tm"
+    curl -sL "https://raw.githubusercontent.com/PhilRobinluo/tm/master/tm" -o "$INSTALL_DIR/tm"
 fi
 
 chmod +x "$INSTALL_DIR/tm"
