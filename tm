@@ -104,7 +104,7 @@ show_status() {
 main_menu() {
     clear
     echo ""
-    echo "  ${BD}${G}🎮 tmux 管理菜单${NC}"
+    echo "  ${BD}${G}🎮 Terminal Mentor${NC}"
     show_status
     line
     echo ""
@@ -143,6 +143,9 @@ main_menu() {
 
     echo "  ${BD}[7]${NC} 📖 学习 tmux 快捷键"
     echo "       ${GR}（掌握这些，以后不用菜单也行）${NC}"
+    echo ""
+    echo "  ${BD}[8]${NC} 🧰 终端工具箱"
+    echo "       ${GR}（端口、进程、搜索、网络、系统状态...）${NC}"
     echo ""
     echo "  ${BD}[0]${NC} 👋 退出菜单"
     echo ""
@@ -648,6 +651,397 @@ first_time_check() {
     fi
 }
 
+# ── 功能8：工具箱 ──
+
+# 端口管理
+do_port() {
+    clear
+    echo ""
+    echo "  ${BD}🔌 端口管理${NC}"
+    line
+    echo ""
+    echo "  ${BD}[1]${NC} 查看某个端口被谁占用了"
+    echo "  ${BD}[2]${NC} 释放某个端口（杀掉占用进程）"
+    echo "  ${BD}[3]${NC} 查看所有正在监听的端口"
+    echo "  ${BD}[0]${NC} 返回"
+    echo ""
+    echo -n "  选择: "
+    read -k1 pick
+    echo ""
+    echo ""
+
+    case $pick in
+        1)
+            echo -n "  输入端口号（比如 3000）: "
+            read port
+            port=$(echo "$port" | tr -cd '0-9')
+            if [[ -z "$port" ]]; then
+                echo "  ${Y}请输入数字端口号${NC}"
+                pause; return
+            fi
+            echo ""
+            local result=$(lsof -i :$port 2>/dev/null | grep LISTEN)
+            if [[ -n "$result" ]]; then
+                echo "  ${G}端口 $port 被以下进程占用：${NC}"
+                echo ""
+                echo "$result" | while read line; do
+                    echo "  $line"
+                done
+            else
+                echo "  ${G}✅ 端口 $port 没有被占用${NC}"
+            fi
+            teach "lsof -i :$port" "lsof = list open files，-i 表示网络连接"
+            ;;
+        2)
+            echo -n "  输入要释放的端口号: "
+            read port
+            port=$(echo "$port" | tr -cd '0-9')
+            if [[ -z "$port" ]]; then
+                echo "  ${Y}请输入数字端口号${NC}"
+                pause; return
+            fi
+            local pids=$(lsof -ti :$port 2>/dev/null)
+            if [[ -z "$pids" ]]; then
+                echo "  ${G}✅ 端口 $port 没有被占用，不需要释放${NC}"
+            else
+                echo "  ${Y}即将杀掉占用端口 $port 的进程: PID=$pids${NC}"
+                echo -n "  确定吗？(y/n): "
+                read -k1 confirm
+                echo ""
+                if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
+                    echo "$pids" | xargs kill -9 2>/dev/null
+                    echo "  ${G}✅ 端口 $port 已释放${NC}"
+                else
+                    echo "  ${GR}已取消${NC}"
+                fi
+            fi
+            teach "lsof -ti :$port | xargs kill -9" "-t 只输出 PID，xargs 把它传给 kill"
+            ;;
+        3)
+            echo "  ${BD}当前所有监听中的端口：${NC}"
+            echo ""
+            if [[ "$(uname)" == "Darwin" ]]; then
+                lsof -iTCP -sTCP:LISTEN -P -n 2>/dev/null | awk 'NR==1 || /LISTEN/' | head -20
+            else
+                ss -tlnp 2>/dev/null | head -20
+            fi
+            echo ""
+            if [[ "$(uname)" == "Darwin" ]]; then
+                teach "lsof -iTCP -sTCP:LISTEN -P -n" "-P 显示端口号，-n 不解析主机名"
+            else
+                teach "ss -tlnp" "-t TCP, -l 监听, -n 数字, -p 进程"
+            fi
+            ;;
+        0|*) return ;;
+    esac
+    pause
+}
+
+# 进程管理
+do_process() {
+    clear
+    echo ""
+    echo "  ${BD}⚙️  进程管理${NC}"
+    line
+    echo ""
+    echo "  ${BD}[1]${NC} 按名字查找进程"
+    echo "  ${BD}[2]${NC} 按名字杀掉进程"
+    echo "  ${BD}[3]${NC} 查看最占资源的进程（Top 10）"
+    echo "  ${BD}[0]${NC} 返回"
+    echo ""
+    echo -n "  选择: "
+    read -k1 pick
+    echo ""
+    echo ""
+
+    case $pick in
+        1)
+            echo -n "  输入进程名（比如 node、python）: "
+            read pname
+            if [[ -z "$pname" ]]; then
+                echo "  ${Y}请输入进程名${NC}"
+                pause; return
+            fi
+            echo ""
+            local result=$(ps aux | grep -i "$pname" | grep -v "grep")
+            if [[ -n "$result" ]]; then
+                echo "  ${G}找到以下进程：${NC}"
+                echo ""
+                echo "$result" | awk '{printf "  PID=%-6s CPU=%-5s MEM=%-5s %s\n", $2, $3, $4, $11}' | head -15
+            else
+                echo "  ${GR}没有找到包含 \"$pname\" 的进程${NC}"
+            fi
+            teach "ps aux | grep $pname" "ps aux 列出所有进程，grep 按名字过滤"
+            ;;
+        2)
+            echo -n "  输入要杀掉的进程名: "
+            read pname
+            if [[ -z "$pname" ]]; then
+                echo "  ${Y}请输入进程名${NC}"
+                pause; return
+            fi
+            local result=$(ps aux | grep -i "$pname" | grep -v "grep")
+            if [[ -z "$result" ]]; then
+                echo "  ${GR}没有找到包含 \"$pname\" 的进程${NC}"
+            else
+                echo "  ${Y}将要杀掉以下进程：${NC}"
+                echo ""
+                echo "$result" | awk '{printf "  PID=%-6s %s\n", $2, $11}' | head -10
+                echo ""
+                echo -n "  确定吗？(y/n): "
+                read -k1 confirm
+                echo ""
+                if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
+                    pkill -f "$pname" 2>/dev/null
+                    echo "  ${G}✅ 已发送终止信号${NC}"
+                else
+                    echo "  ${GR}已取消${NC}"
+                fi
+            fi
+            teach "pkill -f $pname" "pkill 按名字杀进程，-f 匹配完整命令行"
+            ;;
+        3)
+            echo "  ${BD}最占 CPU 的 10 个进程：${NC}"
+            echo ""
+            ps aux --sort=-%cpu 2>/dev/null | head -11 || ps aux | sort -nrk 3 | head -10
+            echo ""
+            teach "ps aux --sort=-%cpu | head -10" "按 CPU 使用率倒序排列"
+            ;;
+        0|*) return ;;
+    esac
+    pause
+}
+
+# 快速搜索
+do_search() {
+    clear
+    echo ""
+    echo "  ${BD}🔍 快速搜索${NC}"
+    line
+    echo ""
+    echo "  ${BD}[1]${NC} 按文件名搜索"
+    echo "  ${BD}[2]${NC} 按文件内容搜索（在代码里找某个词）"
+    echo "  ${BD}[0]${NC} 返回"
+    echo ""
+    echo -n "  选择: "
+    read -k1 pick
+    echo ""
+    echo ""
+
+    case $pick in
+        1)
+            echo -n "  输入文件名（支持通配符，比如 *.js）: "
+            read fname
+            if [[ -z "$fname" ]]; then
+                echo "  ${Y}请输入文件名${NC}"
+                pause; return
+            fi
+            echo ""
+            echo "  ${GR}在当前目录下搜索...${NC}"
+            echo ""
+            find . -name "$fname" -not -path "*/node_modules/*" -not -path "*/.git/*" 2>/dev/null | head -20
+            echo ""
+            teach "find . -name \"$fname\"" "find 从当前目录(.)递归搜索，-name 按名字匹配"
+            ;;
+        2)
+            echo -n "  输入要搜索的内容: "
+            read keyword
+            if [[ -z "$keyword" ]]; then
+                echo "  ${Y}请输入搜索内容${NC}"
+                pause; return
+            fi
+            echo ""
+            echo "  ${GR}在当前目录下搜索...${NC}"
+            echo ""
+            grep -rn --include="*" --exclude-dir={node_modules,.git,dist,.next} "$keyword" . 2>/dev/null | head -20
+            echo ""
+            teach "grep -rn \"$keyword\" ." "-r 递归搜索，-n 显示行号"
+            ;;
+        0|*) return ;;
+    esac
+    pause
+}
+
+# 网络诊断
+do_network() {
+    clear
+    echo ""
+    echo "  ${BD}🌐 网络诊断${NC}"
+    line
+    echo ""
+    echo "  ${BD}[1]${NC} 查看我的 IP（内网 + 公网）"
+    echo "  ${BD}[2]${NC} 测试能不能连上某个地址"
+    echo "  ${BD}[3]${NC} DNS 查询"
+    echo "  ${BD}[0]${NC} 返回"
+    echo ""
+    echo -n "  选择: "
+    read -k1 pick
+    echo ""
+    echo ""
+
+    case $pick in
+        1)
+            echo "  ${BD}内网 IP：${NC}"
+            if [[ "$(uname)" == "Darwin" ]]; then
+                local lip=$(ifconfig en0 2>/dev/null | grep "inet " | awk '{print $2}')
+                echo "    ${G}${lip:-未连接}${NC} (en0/Wi-Fi)"
+            else
+                local lip=$(hostname -I 2>/dev/null | awk '{print $1}')
+                echo "    ${G}${lip:-未连接}${NC}"
+            fi
+            echo ""
+            echo "  ${BD}公网 IP：${NC}"
+            local pip=$(curl -s --connect-timeout 3 ifconfig.me 2>/dev/null)
+            echo "    ${G}${pip:-获取失败（可能没联网）}${NC}"
+            echo ""
+            teach "curl ifconfig.me" "一条命令查公网 IP，记住这个网址就行"
+            ;;
+        2)
+            echo -n "  输入地址（比如 google.com 或 192.168.1.1）: "
+            read addr
+            if [[ -z "$addr" ]]; then
+                echo "  ${Y}请输入地址${NC}"
+                pause; return
+            fi
+            echo ""
+            echo "  ${GR}正在 ping $addr ...（按 Ctrl+C 停止）${NC}"
+            echo ""
+            ping -c 4 "$addr" 2>/dev/null
+            echo ""
+            teach "ping -c 4 $addr" "-c 4 表示只 ping 4 次就停，不加 -c 会一直 ping"
+            ;;
+        3)
+            echo -n "  输入域名（比如 github.com）: "
+            read domain
+            if [[ -z "$domain" ]]; then
+                echo "  ${Y}请输入域名${NC}"
+                pause; return
+            fi
+            echo ""
+            nslookup "$domain" 2>/dev/null || dig "$domain" 2>/dev/null
+            echo ""
+            teach "nslookup $domain" "查询域名对应的 IP 地址"
+            ;;
+        0|*) return ;;
+    esac
+    pause
+}
+
+# 系统状态
+do_sys_status() {
+    clear
+    echo ""
+    echo "  ${BD}📊 系统状态${NC}"
+    line
+    echo ""
+
+    # OS
+    if [[ "$(uname)" == "Darwin" ]]; then
+        local os_ver=$(sw_vers -productVersion 2>/dev/null)
+        echo "  🖥️  系统: ${BD}macOS $os_ver${NC}"
+    else
+        local os_ver=$(cat /etc/os-release 2>/dev/null | grep PRETTY_NAME | cut -d'"' -f2)
+        echo "  🖥️  系统: ${BD}${os_ver:-Linux}${NC}"
+    fi
+
+    # CPU
+    if [[ "$(uname)" == "Darwin" ]]; then
+        local cpu_brand=$(sysctl -n machdep.cpu.brand_string 2>/dev/null | sed 's/(R)//g; s/(TM)//g')
+        local cpu_cores=$(sysctl -n hw.ncpu 2>/dev/null)
+    else
+        local cpu_brand=$(grep "model name" /proc/cpuinfo 2>/dev/null | head -1 | cut -d':' -f2 | xargs)
+        local cpu_cores=$(nproc 2>/dev/null)
+    fi
+    echo "  💻 CPU:  ${BD}${cpu_cores:-?} 核${NC} ${GR}(${cpu_brand:-未知})${NC}"
+
+    # Memory
+    if [[ "$(uname)" == "Darwin" ]]; then
+        local mem_total=$(($(sysctl -n hw.memsize 2>/dev/null) / 1073741824))
+        local top_out=$(top -l 1 -n 0 2>/dev/null)
+        local mem_used=$(echo "$top_out" | grep "PhysMem" | awk '{print $2}')
+        echo "  🧠 内存: ${BD}${mem_used:-?} / ${mem_total}G${NC}"
+    else
+        local mem_info=$(free -h 2>/dev/null | grep Mem)
+        local mem_used=$(echo "$mem_info" | awk '{print $3}')
+        local mem_total=$(echo "$mem_info" | awk '{print $2}')
+        echo "  🧠 内存: ${BD}${mem_used:-?} / ${mem_total:-?}${NC}"
+    fi
+
+    # Disk
+    local disk_info=$(df -h / 2>/dev/null | tail -1)
+    local disk_used=$(echo "$disk_info" | awk '{print $3}')
+    local disk_total=$(echo "$disk_info" | awk '{print $2}')
+    local disk_pct=$(echo "$disk_info" | awk '{print $5}')
+    echo "  💾 磁盘: ${BD}${disk_used} / ${disk_total}${NC} (${disk_pct})"
+
+    # IP
+    if [[ "$(uname)" == "Darwin" ]]; then
+        local ip=$(ifconfig en0 2>/dev/null | grep "inet " | awk '{print $2}')
+    else
+        local ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+    fi
+    echo "  🌐 IP:   ${BD}${ip:-未连接}${NC}"
+
+    # Uptime
+    if [[ "$(uname)" == "Darwin" ]]; then
+        local boot_sec=$(sysctl -n kern.boottime 2>/dev/null | sed 's/.*sec = //;s/,.*//')
+        local now=$(date +%s)
+        if [[ -n "$boot_sec" ]] && [[ "$boot_sec" =~ ^[0-9]+$ ]]; then
+            local up_sec=$((now - boot_sec))
+            local up_days=$((up_sec / 86400))
+            local up_hours=$(( (up_sec % 86400) / 3600 ))
+            echo "  ⏱️  运行: ${BD}${up_days}天 ${up_hours}小时${NC}"
+        fi
+    else
+        local up=$(uptime -p 2>/dev/null)
+        echo "  ⏱️  运行: ${BD}${up:-$(uptime | awk -F'up ' '{print $2}' | awk -F',' '{print $1}')}${NC}"
+    fi
+
+    echo ""
+    teach "top -l 1 | head -10  # macOS\nhtop  # 推荐安装" "top 查看实时系统状态，htop 是更好用的替代"
+    pause
+}
+
+# 工具箱子菜单
+do_toolbox() {
+    while true; do
+        clear
+        echo ""
+        echo "  ${BD}🧰 终端工具箱${NC}"
+        line
+        echo ""
+        echo "  ${BD}[1]${NC} 🔌 端口管理"
+        echo "       ${GR}（查端口、杀端口、看监听）${NC}"
+        echo ""
+        echo "  ${BD}[2]${NC} ⚙️  进程管理"
+        echo "       ${GR}（找进程、杀进程、看资源占用）${NC}"
+        echo ""
+        echo "  ${BD}[3]${NC} 🔍 快速搜索"
+        echo "       ${GR}（找文件、搜代码内容）${NC}"
+        echo ""
+        echo "  ${BD}[4]${NC} 🌐 网络诊断"
+        echo "       ${GR}（查 IP、测连通、DNS 查询）${NC}"
+        echo ""
+        echo "  ${BD}[5]${NC} 📊 系统状态"
+        echo "       ${GR}（CPU、内存、磁盘、IP 一览）${NC}"
+        echo ""
+        echo "  ${BD}[0]${NC} 返回主菜单"
+        echo ""
+        echo -n "  选择: "
+        read -k1 pick
+        echo ""
+
+        case $pick in
+            1) do_port ;;
+            2) do_process ;;
+            3) do_search ;;
+            4) do_network ;;
+            5) do_sys_status ;;
+            0|*) return ;;
+        esac
+    done
+}
+
 # ================================================================
 # 主程序入口
 # ================================================================
@@ -663,8 +1057,10 @@ fi
 case "$1" in
     -h|--help|help)
         echo ""
-        echo "  ${BD}tm - tmux 管理工具${NC}"
+        echo "  ${BD}tm — Terminal Mentor${NC}"
+        echo "  ${GR}终端操作教练，一个工具搞定所有命令行操作${NC}"
         echo ""
+        echo "  ${BD}tmux 管理：${NC}"
         echo "  ${C}tm${NC}            打开交互菜单"
         echo "  ${C}tm a${NC}          秒回最近的会话"
         echo "  ${C}tm new${NC}        快速新建会话"
@@ -672,6 +1068,17 @@ case "$1" in
         echo "  ${C}tm d${NC}          快速脱离当前会话"
         echo "  ${C}tm ls${NC}         列出所有会话"
         echo "  ${C}tm keys${NC}       快捷键速查"
+        echo ""
+        echo "  ${BD}工具箱：${NC}"
+        echo "  ${C}tm port 3000${NC}  查看端口 3000 被谁占用"
+        echo "  ${C}tm kill-port 3000${NC} 释放端口 3000"
+        echo "  ${C}tm ps node${NC}    查找 node 相关进程"
+        echo "  ${C}tm find *.js${NC}  搜索文件"
+        echo "  ${C}tm grep TODO${NC}  在代码中搜索内容"
+        echo "  ${C}tm ip${NC}         查看内网/公网 IP"
+        echo "  ${C}tm sys${NC}        系统状态一览"
+        echo "  ${C}tm tools${NC}      打开工具箱菜单"
+        echo ""
         echo "  ${C}tm startup${NC}    启动信息面板"
         echo "  ${C}tm help${NC}       显示此帮助"
         echo ""
@@ -735,6 +1142,94 @@ case "$1" in
         exit 0
         ;;
     keys)    do_learn; exit 0 ;;
+    tools|toolbox) do_toolbox; exit 0 ;;
+    port)
+        if [[ -z "$2" ]]; then
+            do_port; exit 0
+        fi
+        local p=$(echo "$2" | tr -cd '0-9')
+        echo ""
+        local result=$(lsof -i :$p 2>/dev/null | grep LISTEN)
+        if [[ -n "$result" ]]; then
+            echo "  ${G}端口 $p 被占用：${NC}"
+            echo "$result" | while read line; do echo "  $line"; done
+        else
+            echo "  ${G}✅ 端口 $p 没有被占用${NC}"
+        fi
+        teach "lsof -i :$p" "lsof = list open files，-i 表示网络连接"
+        exit 0
+        ;;
+    kill-port)
+        if [[ -z "$2" ]]; then
+            echo "  ${Y}用法: tm kill-port 3000${NC}"; exit 1
+        fi
+        local p=$(echo "$2" | tr -cd '0-9')
+        local pids=$(lsof -ti :$p 2>/dev/null)
+        if [[ -z "$pids" ]]; then
+            echo "  ${G}✅ 端口 $p 没有被占用${NC}"
+        else
+            echo "$pids" | xargs kill -9 2>/dev/null
+            echo "  ${G}✅ 端口 $p 已释放（PID: $pids）${NC}"
+        fi
+        teach "lsof -ti :$p | xargs kill -9" "-t 只输出 PID，xargs 传给 kill"
+        exit 0
+        ;;
+    ps)
+        if [[ -z "$2" ]]; then
+            do_process; exit 0
+        fi
+        echo ""
+        local result=$(ps aux | grep -i "$2" | grep -v "grep" | grep -v "tm ps")
+        if [[ -n "$result" ]]; then
+            echo "  ${G}包含 \"$2\" 的进程：${NC}"
+            echo ""
+            echo "$result" | awk '{printf "  PID=%-6s CPU=%-5s MEM=%-5s %s\n", $2, $3, $4, $11}' | head -15
+        else
+            echo "  ${GR}没有找到包含 \"$2\" 的进程${NC}"
+        fi
+        teach "ps aux | grep $2" "ps aux 列出所有进程，grep 按名字过滤"
+        exit 0
+        ;;
+    find)
+        if [[ -z "$2" ]]; then
+            do_search; exit 0
+        fi
+        echo ""
+        echo "  ${GR}搜索文件: $2${NC}"
+        echo ""
+        find . -name "$2" -not -path "*/node_modules/*" -not -path "*/.git/*" 2>/dev/null | head -20
+        echo ""
+        teach "find . -name \"$2\"" "从当前目录递归搜索文件"
+        exit 0
+        ;;
+    grep)
+        if [[ -z "$2" ]]; then
+            do_search; exit 0
+        fi
+        echo ""
+        echo "  ${GR}搜索内容: $2${NC}"
+        echo ""
+        grep -rn --exclude-dir={node_modules,.git,dist,.next} "$2" . 2>/dev/null | head -20
+        echo ""
+        teach "grep -rn \"$2\" ." "-r 递归搜索，-n 显示行号"
+        exit 0
+        ;;
+    ip)
+        echo ""
+        if [[ "$(uname)" == "Darwin" ]]; then
+            local lip=$(ifconfig en0 2>/dev/null | grep "inet " | awk '{print $2}')
+        else
+            local lip=$(hostname -I 2>/dev/null | awk '{print $1}')
+        fi
+        echo "  🏠 内网: ${G}${lip:-未连接}${NC}"
+        local pip=$(curl -s --connect-timeout 3 ifconfig.me 2>/dev/null)
+        echo "  🌍 公网: ${G}${pip:-获取失败}${NC}"
+        teach "curl ifconfig.me" "一条命令查公网 IP"
+        exit 0
+        ;;
+    sys|status)
+        do_sys_status; exit 0
+        ;;
 esac
 
 # 首次使用引导
@@ -755,6 +1250,7 @@ while true; do
         5) do_new_window ;;
         6) do_kill ;;
         7) do_learn ;;
+        8) do_toolbox ;;
         0|q)
             echo ""
             echo "  ${G}👋 下次见！记住，直接输入 ${C}tm${G} 就能回来${NC}"
@@ -762,7 +1258,7 @@ while true; do
             break
             ;;
         *)
-            echo "  ${Y}输入 0-7 的数字就行哦${NC}"
+            echo "  ${Y}输入 0-8 的数字就行哦${NC}"
             sleep 1
             ;;
     esac
