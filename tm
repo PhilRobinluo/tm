@@ -24,7 +24,36 @@ load_config() {
     fi
 }
 
-# 加载插件
+# ── 颜色 ──
+G='\033[0;32m'    # 绿色-成功
+Y='\033[1;33m'    # 黄色-提醒
+B='\033[0;34m'    # 蓝色
+C='\033[0;36m'    # 青色-命令
+R='\033[0;31m'    # 红色-警告
+GR='\033[0;90m'   # 灰色-注释
+BD='\033[1m'      # 加粗
+NC='\033[0m'      # 恢复
+
+# ── 插件注册表 ──
+# 插件可以注册：菜单项、快捷命令
+# 用法（在插件 .sh 文件中）：
+#   tm_register_toolbox_item "s" "🐱 我的SSH" "do_my_ssh"
+#   tm_register_shortcut "myssh" "do_my_ssh"
+typeset -a TM_PLUGIN_TOOLBOX_KEYS TM_PLUGIN_TOOLBOX_LABELS TM_PLUGIN_TOOLBOX_FUNCS
+typeset -a TM_PLUGIN_SHORTCUT_NAMES TM_PLUGIN_SHORTCUT_FUNCS
+
+tm_register_toolbox_item() {
+    TM_PLUGIN_TOOLBOX_KEYS+=("$1")
+    TM_PLUGIN_TOOLBOX_LABELS+=("$2")
+    TM_PLUGIN_TOOLBOX_FUNCS+=("$3")
+}
+
+tm_register_shortcut() {
+    TM_PLUGIN_SHORTCUT_NAMES+=("$1")
+    TM_PLUGIN_SHORTCUT_FUNCS+=("$2")
+}
+
+# 加载插件（颜色和注册函数已就绪，插件可以安全使用）
 load_plugins() {
     if [[ -d "$TM_PLUGIN_DIR" ]]; then
         for plugin in "$TM_PLUGIN_DIR"/*.sh(N); do
@@ -35,16 +64,6 @@ load_plugins() {
 
 load_config
 load_plugins
-
-# ── 颜色 ──
-G='\033[0;32m'    # 绿色-成功
-Y='\033[1;33m'    # 黄色-提醒
-B='\033[0;34m'    # 蓝色
-C='\033[0;36m'    # 青色-命令
-R='\033[0;31m'    # 红色-警告
-GR='\033[0;90m'   # 灰色-注释
-BD='\033[1m'      # 加粗
-NC='\033[0m'      # 恢复
 
 # ── 工具函数 ──
 
@@ -2366,11 +2385,26 @@ do_toolbox() {
         echo "       ${GR}（CPU、内存、磁盘、IP 一览）${NC}"
         echo ""
         echo "  ${BD}[t]${NC} ⏰ 定时任务"
+        # 渲染插件注册的菜单项
+        for i in {1..${#TM_PLUGIN_TOOLBOX_KEYS[@]}}; do
+            echo "  ${BD}[${TM_PLUGIN_TOOLBOX_KEYS[$i]}]${NC} ${TM_PLUGIN_TOOLBOX_LABELS[$i]}"
+        done
         echo "  ${BD}[0]${NC} 返回主菜单"
         echo ""
         echo -n "  选择: "
         read -k1 pick
         echo ""
+
+        # 先检查是否是插件注册的快捷键
+        local plugin_matched=false
+        for i in {1..${#TM_PLUGIN_TOOLBOX_KEYS[@]}}; do
+            if [[ "${pick:l}" == "${TM_PLUGIN_TOOLBOX_KEYS[$i]:l}" ]]; then
+                ${TM_PLUGIN_TOOLBOX_FUNCS[$i]}
+                plugin_matched=true
+                break
+            fi
+        done
+        $plugin_matched && continue
 
         case $pick in
             1) do_port ;;
@@ -2398,6 +2432,14 @@ if ! command -v tmux &> /dev/null; then
     echo "  ${GR}请运行: ${C}brew install tmux${NC}"
     exit 1
 fi
+
+# 检查插件注册的快捷命令
+for i in {1..${#TM_PLUGIN_SHORTCUT_NAMES[@]}}; do
+    if [[ "$1" == "${TM_PLUGIN_SHORTCUT_NAMES[$i]}" ]]; then
+        ${TM_PLUGIN_SHORTCUT_FUNCS[$i]}
+        exit 0
+    fi
+done
 
 # 快捷参数（给熟练后用的）
 case "$1" in
