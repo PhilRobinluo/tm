@@ -2443,6 +2443,79 @@ done
 
 # 快捷参数（给熟练后用的）
 case "$1" in
+    plugin)
+        local PLUGIN_REPO="https://raw.githubusercontent.com/PhilRobinluo/terminal-mentor/master/plugins/official"
+        mkdir -p "$TM_PLUGIN_DIR"
+        case "$2" in
+            list|ls|"")
+                echo ""
+                echo "  ${BD}📦 tm 插件管理${NC}"
+                echo ""
+                echo "  ${BD}已安装的插件：${NC}"
+                local installed=0
+                for f in "$TM_PLUGIN_DIR"/*.sh(N); do
+                    local name=$(basename "$f" .sh)
+                    local desc=$(grep '^# 描述:' "$f" 2>/dev/null | head -1 | sed 's/^# 描述: //')
+                    echo "  ${G}✓${NC} ${BD}$name${NC}  ${GR}$desc${NC}"
+                    installed=$((installed + 1))
+                done
+                [[ $installed -eq 0 ]] && echo "  ${GR}（还没装任何插件）${NC}"
+                echo ""
+                echo "  ${BD}可安装的官方插件：${NC}"
+                echo "  ${C}docker${NC}     Docker 容器管理导航菜单"
+                echo "  ${C}npm${NC}        npm/pnpm 包管理导航菜单"
+                echo "  ${C}ssh${NC}        SSH 连接管理导航菜单"
+                echo "  ${C}python${NC}     Python 虚拟环境导航菜单"
+                echo "  ${C}brew${NC}       Homebrew 包管理导航菜单"
+                echo ""
+                echo "  ${BD}安装：${NC}${C}tm plugin install <名字>${NC}"
+                echo "  ${BD}卸载：${NC}${C}tm plugin remove <名字>${NC}"
+                echo ""
+                ;;
+            install|add)
+                if [[ -z "$3" ]]; then
+                    echo "  ${Y}用法: tm plugin install <插件名>${NC}"
+                    echo "  ${GR}运行 tm plugin list 查看可用插件${NC}"
+                    exit 1
+                fi
+                local name="$3"
+                if [[ -f "$TM_PLUGIN_DIR/$name.sh" ]]; then
+                    echo "  ${Y}⚠️  $name 已安装${NC}"
+                    exit 0
+                fi
+                echo "  ${C}→ 下载插件: $name...${NC}"
+                local tmp=$(mktemp)
+                curl -sL "$PLUGIN_REPO/$name.sh" -o "$tmp"
+                if [[ -s "$tmp" ]] && head -1 "$tmp" | grep -q '#!/bin/zsh'; then
+                    mv "$tmp" "$TM_PLUGIN_DIR/$name.sh"
+                    chmod +x "$TM_PLUGIN_DIR/$name.sh"
+                    echo "  ${G}✅ $name 安装成功！${NC}"
+                    echo "  ${GR}重新运行 tm 即可使用${NC}"
+                else
+                    echo "  ${R}❌ 插件 $name 不存在或下载失败${NC}"
+                    echo "  ${GR}运行 tm plugin list 查看可用插件${NC}"
+                    rm -f "$tmp"
+                fi
+                ;;
+            remove|rm|uninstall)
+                if [[ -z "$3" ]]; then
+                    echo "  ${Y}用法: tm plugin remove <插件名>${NC}"
+                    exit 1
+                fi
+                local name="$3"
+                if [[ -f "$TM_PLUGIN_DIR/$name.sh" ]]; then
+                    rm "$TM_PLUGIN_DIR/$name.sh"
+                    echo "  ${G}✅ $name 已卸载${NC}"
+                else
+                    echo "  ${Y}$name 未安装${NC}"
+                fi
+                ;;
+            *)
+                echo "  ${Y}用法: tm plugin [list|install|remove] <名字>${NC}"
+                ;;
+        esac
+        exit 0
+        ;;
     -v|--version|version)
         echo "tm version $VERSION"
         exit 0
@@ -2525,6 +2598,12 @@ case "$1" in
         echo "  ${BD}其他：${NC}"
         echo "  ${C}tm startup${NC}    启动信息面板"
         echo "  ${C}tm cron${NC}       定时任务一览"
+        echo "  ${BD}插件管理：${NC}"
+        echo "  ${C}tm plugin${NC}            查看已装/可装插件"
+        echo "  ${C}tm plugin install X${NC}  安装插件"
+        echo "  ${C}tm plugin remove X${NC}   卸载插件"
+        echo ""
+        echo "  ${BD}其他：${NC}"
         echo "  ${C}tm update${NC}     检查并更新到最新版本"
         echo "  ${C}tm --version${NC}  显示版本号"
         echo "  ${C}tm help${NC}       显示此帮助"

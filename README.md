@@ -147,31 +147,41 @@ tm update
 | 一周后 | `tm port`、`tm gs` | 你开始跳过菜单了 |
 | 一个月后 | `lsof`、`git status` | 拐杖退休 |
 
-## 自定义
+## 插件系统
+
+tm 内置的功能不够用？**装个插件就行。**
+
+```bash
+tm plugin                    # 查看已装/可装的插件
+tm plugin install docker     # 一键安装 Docker 管理插件
+tm plugin install npm        # 一键安装 npm/pnpm 管理插件
+tm plugin install ssh        # 一键安装 SSH 连接管理插件
+tm plugin remove docker      # 不需要了就卸掉
+```
+
+装完重新运行 `tm`，工具箱里自动多出对应的菜单项。每个插件都带 teach() 教学。
+
+### 官方插件
+
+| 插件 | 功能 | 安装命令 |
+|------|------|---------|
+| `docker` | 容器启停、日志、清理、进入终端 | `tm plugin install docker` |
+| `npm` | 安装依赖、添加/删除包、运行脚本 | `tm plugin install npm` |
+| `ssh` | 查看主机、快速连接、密钥管理 | `tm plugin install ssh` |
+
+### 自己写插件
+
+见 [插件开发指南](plugins/PLUGIN_GUIDE.md)。核心就两步：写函数 + 注册到菜单。
 
 ### 配置文件
-
-复制示例配置，按需修改：
 
 ```bash
 cp .tmrc.example ~/.tmrc
 ```
 
-可配置项：
 - `TM_SHOW_TEACH` — 是否显示"学一招"教学提示（学会后可关掉）
 - `TM_SHOW_STARTUP` — 是否在终端启动时显示 tmux 状态
 - `TM_SESSION_LIMIT` — 最大会话数限制
-
-### 插件系统
-
-把 `.sh` 文件扔到 `~/.tm/plugins/` 目录，自动加载：
-
-```bash
-mkdir -p ~/.tm/plugins
-cp plugins/example.sh ~/.tm/plugins/
-```
-
-可以用插件扩展工具箱 — 比如加 Docker 管理、K8s 操作等。详见 `plugins/example.sh`。
 
 ## 老手模式
 
