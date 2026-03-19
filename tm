@@ -152,59 +152,53 @@ show_status() {
 # ── 主菜单 ──
 main_menu() {
     clear
-    echo ""
-    echo "  ${BD}${G}🎮 Terminal Mentor${NC}"
-    show_status
-    line
-    echo ""
-
     local count=$(session_count)
 
-    echo "  你想做什么？"
     echo ""
-    echo "  ${BD}[0]${NC} 🚀 项目导航"
-    echo "       ${GR}（快速跳转常用目录，搭配 zoxide）${NC}"
-    echo ""
-    echo "  ${BD}[1]${NC} 🆕 创建一个新的工作空间"
-    echo "       ${GR}（就像打开一个新的终端窗口，但更强大）${NC}"
+    echo "  ${BD}${G}🎮 Terminal Mentor${NC} ${GR}v${VERSION}${NC}"
+    show_status
     echo ""
 
-    if [[ "$count" -gt 0 ]]; then
-        echo "  ${BD}[2]${NC} 🔗 进入一个已有的工作空间"
-        echo "       ${GR}（回到之前的工作，一切都还在）${NC}"
-        echo ""
-        echo "  ${BD}[3]${NC} 👀 看看都有哪些工作空间在运行"
-        echo "       ${GR}（列个清单，心里有数）${NC}"
-        echo ""
-    fi
-
+    # ━━ 会话管理 ━━
+    echo "  ${BD}━━ 会话管理 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo "  ${BD}[1]${NC} 🆕 创建空间    ${BD}[2]${NC} 🔗 进入空间    ${BD}[3]${NC} 👀 查看全部"
     if in_tmux; then
-        echo "  ${BD}[4]${NC} 🚪 暂时离开（工作空间保持运行）"
-        echo "       ${GR}（相当于「最小化」，任务不会停）${NC}"
-        echo ""
-        echo "  ${BD}[5]${NC} ➕ 在当前空间里多开一个窗口"
-        echo "       ${GR}（就像浏览器开新标签页一样）${NC}"
+        echo "  ${BD}[4]${NC} 🚪 暂时离开    ${BD}[5]${NC} ➕ 新窗口      ${BD}[6]${NC} 🗑️  关掉空间"
+    else
+        echo "  ${BD}[6]${NC} 🗑️  关掉空间"
+    fi
+    echo ""
+
+    # ━━ 工具箱 ━━
+    echo "  ${BD}━━ 工具箱 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo "  ${BD}[p]${NC} 🔌 端口管理    ${BD}[k]${NC} ⚙️  进程管理    ${BD}[f]${NC} 🔍 搜索"
+    echo "  ${BD}[n]${NC} 🌐 网络诊断    ${BD}[g]${NC} 📦 Git 中心    ${BD}[s]${NC} 📊 系统状态"
+    echo "  ${BD}[j]${NC} 🚀 项目导航    ${BD}[r]${NC} 🔐 文件权限    ${BD}[z]${NC} 📦 压缩解压"
+    echo "  ${BD}[t]${NC} ⏰ 定时任务"
+    echo ""
+
+    # ━━ 已安装插件 ━━
+    local has_plugins=false
+    for f in "$TM_PLUGIN_DIR"/*.sh(N); do
+        has_plugins=true
+        break
+    done
+    if $has_plugins; then
+        echo "  ${BD}━━ 已安装插件 ━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        # 渲染插件注册的菜单项
+        for i in {1..${#TM_PLUGIN_TOOLBOX_KEYS[@]}}; do
+            printf "  ${BD}[${TM_PLUGIN_TOOLBOX_KEYS[$i]}]${NC} ${TM_PLUGIN_TOOLBOX_LABELS[$i]}    "
+            # 每 3 个换行
+            [[ $((i % 3)) -eq 0 ]] && echo ""
+        done
+        [[ $((${#TM_PLUGIN_TOOLBOX_KEYS[@]} % 3)) -ne 0 ]] && echo ""
         echo ""
     fi
 
-    if [[ "$count" -gt 0 ]]; then
-        echo "  ${BD}[6]${NC} 🗑️  关掉某个工作空间"
-        echo "       ${GR}（彻底关闭，里面的任务也会停止）${NC}"
-        echo ""
-    fi
-
-    echo "  ${BD}[7]${NC} 📖 学习 tmux 快捷键"
-    echo "       ${GR}（掌握这些，以后不用菜单也行）${NC}"
+    # ━━ 底部 ━━
+    echo "  ${BD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo "  ${BD}[7]${NC} 📖 快捷键学习  ${BD}[9]${NC} 📦 插件市场    ${BD}[q]${NC} 退出"
     echo ""
-    echo "  ${BD}[8]${NC} 🧰 工具箱（端口、进程、搜索、网络、系统...）"
-    echo "       ${GR}（一站式终端工具，每个操作都教你原始命令）${NC}"
-    echo ""
-    echo "  ${BD}[9]${NC} 📦 插件市场"
-    echo "       ${GR}（安装/卸载功能模块，按需扩展你的工具箱）${NC}"
-    echo ""
-    echo "  ${BD}[q]${NC} 👋 退出菜单"
-    echo ""
-    line
 }
 
 # ── 项目选择器（创建工作空间时的硬工序）──
@@ -3146,8 +3140,18 @@ while true; do
     read -k1 choice
     echo ""
 
+    # 先检查是否是插件注册的快捷键
+    local plugin_handled=false
+    for i in {1..${#TM_PLUGIN_TOOLBOX_KEYS[@]}}; do
+        if [[ "${choice:l}" == "${TM_PLUGIN_TOOLBOX_KEYS[$i]:l}" ]]; then
+            ${TM_PLUGIN_TOOLBOX_FUNCS[$i]}
+            plugin_handled=true
+            break
+        fi
+    done
+    $plugin_handled && continue
+
     case $choice in
-        0) do_jump ;;
         1) do_new ;;
         2) do_attach ;;
         3) do_list ;;
@@ -3157,14 +3161,25 @@ while true; do
         7) do_learn ;;
         8) do_toolbox ;;
         9) do_plugin_market ;;
+        # 工具箱直达键
+        p|P) do_port ;;
+        k|K) do_process ;;
+        f|F) do_search ;;
+        n|N) do_network ;;
+        g|G) do_git ;;
+        s|S) do_sys_status ;;
+        j|J) do_jump ;;
+        r|R) do_permission ;;
+        z|Z) do_archive ;;
+        t|T) do_cron ;;
         q|Q)
             echo ""
-            echo "  ${G}👋 下次见！记住，直接输入 ${C}tm${G} 就能回来${NC}"
+            echo "  ${G}👋 下次见！直接输入 ${C}tm${G} 就能回来${NC}"
             echo ""
             break
             ;;
         *)
-            echo "  ${Y}输入对应数字或 q 退出${NC}"
+            echo "  ${Y}按对应的数字或字母选择${NC}"
             sleep 1
             ;;
     esac
