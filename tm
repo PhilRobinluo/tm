@@ -199,6 +199,9 @@ main_menu() {
     echo "  ${BD}[8]${NC} 🧰 工具箱（端口、进程、搜索、网络、系统...）"
     echo "       ${GR}（一站式终端工具，每个操作都教你原始命令）${NC}"
     echo ""
+    echo "  ${BD}[9]${NC} 📦 插件市场"
+    echo "       ${GR}（安装/卸载功能模块，按需扩展你的工具箱）${NC}"
+    echo ""
     echo "  ${BD}[q]${NC} 👋 退出菜单"
     echo ""
     line
@@ -2349,6 +2352,129 @@ do_jump() {
     esac
 }
 
+# ── 功能9：插件市场 ──
+do_plugin_market() {
+    local PLUGIN_REPO="https://raw.githubusercontent.com/PhilRobinluo/terminal-mentor/master/plugins/official"
+    mkdir -p "$TM_PLUGIN_DIR"
+
+    while true; do
+        clear
+        echo ""
+        echo "  ${BD}📦 插件市场${NC}"
+        echo "  ${GR}按需安装功能模块，扩展你的工具箱${NC}"
+        line
+        echo ""
+
+        # 已安装的插件
+        echo "  ${BD}✅ 已安装：${NC}"
+        local installed=0
+        for f in "$TM_PLUGIN_DIR"/*.sh(N); do
+            local pname=$(basename "$f" .sh)
+            local pdesc=$(grep '^# 描述:' "$f" 2>/dev/null | head -1 | sed 's/^# 描述: //')
+            echo "  ${G}●${NC} $pname  ${GR}$pdesc${NC}"
+            installed=$((installed + 1))
+        done
+        [[ $installed -eq 0 ]] && echo "  ${GR}（还没装任何插件）${NC}"
+        echo ""
+        line
+        echo ""
+
+        # 可安装的官方插件
+        echo "  ${BD}🛒 可安装的官方插件：${NC}"
+        echo ""
+
+        # 插件列表（编号 + 名字 + 描述 + 安装状态）
+        local -a available_names available_descs
+        available_names=(docker npm ssh python brew)
+        available_descs=(
+            "Docker 容器管理 — 启停、日志、清理、进入终端"
+            "npm/pnpm 包管理 — 安装依赖、运行脚本、搜索包"
+            "SSH 连接管理 — 主机列表、密钥管理、测试连接"
+            "Python 环境管理 — 虚拟环境、pip 包、运行脚本"
+            "Homebrew 包管理 — 安装、更新、搜索、清理"
+        )
+
+        local idx=1
+        for i in {1..${#available_names[@]}}; do
+            local n="${available_names[$i]}"
+            local d="${available_descs[$i]}"
+            if [[ -f "$TM_PLUGIN_DIR/$n.sh" ]]; then
+                echo "  ${BD}[$idx]${NC} ${G}✓${NC} ${BD}$n${NC}  ${GR}$d${NC}  ${G}(已安装)${NC}"
+            else
+                echo "  ${BD}[$idx]${NC}   ${BD}$n${NC}  ${GR}$d${NC}"
+            fi
+            idx=$((idx + 1))
+        done
+
+        echo ""
+        line
+        echo ""
+        echo "  ${BD}按数字安装插件${NC}  ${GR}|${NC}  ${BD}[u]${NC} 卸载插件  ${GR}|${NC}  ${BD}[0]${NC} 返回"
+        echo ""
+        echo -n "  选择: "
+        read -k1 pick
+        echo ""
+
+        case $pick in
+            [1-5])
+                local target="${available_names[$pick]}"
+                if [[ -f "$TM_PLUGIN_DIR/$target.sh" ]]; then
+                    echo ""
+                    echo "  ${G}$target 已经安装了 ✓${NC}"
+                    sleep 1
+                else
+                    echo ""
+                    echo "  ${C}→ 正在安装 $target...${NC}"
+                    local tmp=$(mktemp)
+                    curl -sL "$PLUGIN_REPO/$target.sh" -o "$tmp"
+                    if [[ -s "$tmp" ]] && head -1 "$tmp" | grep -q '#!/bin/zsh'; then
+                        mv "$tmp" "$TM_PLUGIN_DIR/$target.sh"
+                        chmod +x "$TM_PLUGIN_DIR/$target.sh"
+                        source "$TM_PLUGIN_DIR/$target.sh"
+                        echo ""
+                        echo "  ${G}✅ $target 安装成功！${NC}"
+                        echo "  ${GR}已加载到工具箱，现在就可以用了${NC}"
+                    else
+                        echo "  ${R}❌ 安装失败，请检查网络${NC}"
+                        rm -f "$tmp"
+                    fi
+                    sleep 1
+                fi
+                ;;
+            u|U)
+                echo ""
+                echo "  ${BD}选择要卸载的插件：${NC}"
+                local -a installed_list
+                local uidx=1
+                for f in "$TM_PLUGIN_DIR"/*.sh(N); do
+                    local pname=$(basename "$f" .sh)
+                    [[ "$pname" == "personal" ]] && continue
+                    echo "  [$uidx] $pname"
+                    installed_list+=("$f")
+                    uidx=$((uidx + 1))
+                done
+                if [[ ${#installed_list[@]} -eq 0 ]]; then
+                    echo "  ${GR}没有可卸载的插件${NC}"
+                    sleep 1
+                else
+                    echo ""
+                    echo -n "  输入编号: "
+                    read uchoice
+                    if [[ "$uchoice" =~ ^[0-9]+$ ]] && [[ $uchoice -le ${#installed_list[@]} ]]; then
+                        local target_file="${installed_list[$uchoice]}"
+                        local target_name=$(basename "$target_file" .sh)
+                        rm "$target_file"
+                        echo "  ${G}✅ $target_name 已卸载${NC}"
+                        echo "  ${GR}重新运行 tm 后生效${NC}"
+                        sleep 1
+                    fi
+                fi
+                ;;
+            0|*) return ;;
+        esac
+    done
+}
+
 # ── 功能8：工具箱子菜单 ──
 do_toolbox() {
     while true; do
@@ -3030,6 +3156,7 @@ while true; do
         6) do_kill ;;
         7) do_learn ;;
         8) do_toolbox ;;
+        9) do_plugin_market ;;
         q|Q)
             echo ""
             echo "  ${G}👋 下次见！记住，直接输入 ${C}tm${G} 就能回来${NC}"
