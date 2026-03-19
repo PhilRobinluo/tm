@@ -1,11 +1,40 @@
 #!/bin/zsh
 # ================================================================
-# tm - tmux 超简单管理工具 🎮
+# tm - Terminal Mentor 终端导航菜单 🎮
 # ================================================================
 # 专为零基础用户设计，全程选择题操作，不用记任何命令
-# 安装：mv tm.sh ~/.local/bin/tm && chmod +x ~/.local/bin/tm
+# 安装：bash install.sh 或 brew install PhilRobinluo/tap/tm
 # 使用：终端输入 tm 回车即可
 # ================================================================
+
+VERSION="1.0.0"
+
+# ── 配置加载 ──
+TM_CONFIG_DIR="$HOME/.config/tm"
+TM_PLUGIN_DIR="$HOME/.tm/plugins"
+
+load_config() {
+    # 默认值
+    TM_SHOW_TEACH=${TM_SHOW_TEACH:-true}
+    TM_SHOW_STARTUP=${TM_SHOW_STARTUP:-true}
+    TM_SESSION_LIMIT=${TM_SESSION_LIMIT:-8}
+    # 加载用户配置
+    if [[ -f "$HOME/.tmrc" ]]; then
+        source "$HOME/.tmrc"
+    fi
+}
+
+# 加载插件
+load_plugins() {
+    if [[ -d "$TM_PLUGIN_DIR" ]]; then
+        for plugin in "$TM_PLUGIN_DIR"/*.sh(N); do
+            source "$plugin"
+        done
+    fi
+}
+
+load_config
+load_plugins
 
 # ── 颜色 ──
 G='\033[0;32m'    # 绿色-成功
@@ -21,6 +50,7 @@ NC='\033[0m'      # 恢复
 
 # 教学提示：每次操作都告诉你"如果不用菜单，原本该输什么"
 teach() {
+    [[ "$TM_SHOW_TEACH" != "true" ]] && return
     echo ""
     echo "${GR}  ┌─────────────────────────────────────────┐${NC}"
     echo "${GR}  │ 📚 学一招：不用菜单的话，你可以直接输入：${NC}"
@@ -2438,6 +2468,44 @@ fi
 
 # 快捷参数（给熟练后用的）
 case "$1" in
+    -v|--version|version)
+        echo "tm version $VERSION"
+        exit 0
+        ;;
+    update)
+        echo ""
+        echo "  ${BD}🔄 检查更新...${NC}"
+        local latest=$(curl -sL --connect-timeout 5 "https://raw.githubusercontent.com/PhilRobinluo/terminal-mentor/master/tm" | grep '^VERSION=' | head -1 | cut -d'"' -f2)
+        if [[ -z "$latest" ]]; then
+            echo "  ${R}❌ 无法连接到 GitHub${NC}"
+            exit 1
+        fi
+        if [[ "$latest" == "$VERSION" ]]; then
+            echo "  ${G}✅ 已是最新版本 ($VERSION)${NC}"
+        else
+            echo "  ${Y}发现新版本: $latest (当前: $VERSION)${NC}"
+            echo -n "  是否更新？(y/N): "
+            read answer
+            if [[ "$answer" == "y" || "$answer" == "Y" ]]; then
+                local tmp=$(mktemp)
+                curl -sL "https://raw.githubusercontent.com/PhilRobinluo/terminal-mentor/master/tm" -o "$tmp"
+                if [[ -s "$tmp" ]]; then
+                    cp "$0" "$0.backup"
+                    mv "$tmp" "$0"
+                    chmod +x "$0"
+                    echo "  ${G}✅ 更新完成！旧版本已备份为 $(basename $0).backup${NC}"
+                    echo "  ${GR}请重新运行 tm 使用新版本${NC}"
+                else
+                    echo "  ${R}❌ 下载失败${NC}"
+                    rm -f "$tmp"
+                fi
+            else
+                echo "  ${GR}已取消${NC}"
+            fi
+        fi
+        echo ""
+        exit 0
+        ;;
     -h|--help|help)
         echo ""
         echo "  ${BD}tm — Terminal Mentor${NC}"
@@ -2484,6 +2552,8 @@ case "$1" in
         echo "  ${C}tm cron${NC}       定时任务一览"
         echo "  ${C}tm sync${NC}       同步 session 名 = Claude 标题"
         echo "  ${C}tm limit${NC}      查看/设置窗口上限"
+        echo "  ${C}tm update${NC}     检查并更新到最新版本"
+        echo "  ${C}tm --version${NC}  显示版本号"
         echo "  ${C}tm help${NC}       显示此帮助"
         echo ""
         exit 0

@@ -5,6 +5,7 @@
 **打开菜单，按数字操作。用着用着，命令就会了。**
 
 <p>
+  <img src="https://img.shields.io/github/v/tag/PhilRobinluo/terminal-mentor?label=version&color=blue" />
   <img src="https://img.shields.io/github/license/PhilRobinluo/terminal-mentor" />
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux-blue" />
   <img src="https://img.shields.io/badge/shell-zsh-green" />
@@ -23,11 +24,25 @@
 
 ## 安装
 
+**Homebrew（推荐）：**
+
+```bash
+brew install PhilRobinluo/tap/tm
+```
+
+**手动安装：**
+
 ```bash
 git clone https://github.com/PhilRobinluo/terminal-mentor.git && cd terminal-mentor && bash install.sh
 ```
 
 自动完成：检测/安装 tmux → 部署 `tm` 命令 → 配置终端。已有配置自动备份。
+
+**更新到最新版：**
+
+```bash
+tm update
+```
 
 ## 它是怎么工作的
 
@@ -132,6 +147,32 @@ git clone https://github.com/PhilRobinluo/terminal-mentor.git && cd terminal-men
 | 一周后 | `tm port`、`tm gs` | 你开始跳过菜单了 |
 | 一个月后 | `lsof`、`git status` | 拐杖退休 |
 
+## 自定义
+
+### 配置文件
+
+复制示例配置，按需修改：
+
+```bash
+cp .tmrc.example ~/.tmrc
+```
+
+可配置项：
+- `TM_SHOW_TEACH` — 是否显示"学一招"教学提示（学会后可关掉）
+- `TM_SHOW_STARTUP` — 是否在终端启动时显示 tmux 状态
+- `TM_SESSION_LIMIT` — 最大会话数限制
+
+### 插件系统
+
+把 `.sh` 文件扔到 `~/.tm/plugins/` 目录，自动加载：
+
+```bash
+mkdir -p ~/.tm/plugins
+cp plugins/example.sh ~/.tm/plugins/
+```
+
+可以用插件扩展工具箱 — 比如加 Docker 管理、K8s 操作等。详见 `plugins/example.sh`。
+
 ## 老手模式
 
 用熟了之后，可以跳过菜单直接用快捷命令：
@@ -170,6 +211,10 @@ tm gl                # 树形日志
 tm gst "备注"        # stash
 tm gstp              # stash pop
 tm gc https://...    # clone
+
+# 管理
+tm update            # 检查更新
+tm --version         # 查看版本
 ```
 
 </details>

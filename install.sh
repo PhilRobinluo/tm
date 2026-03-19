@@ -19,12 +19,23 @@ BD='\033[1m'
 NC='\033[0m'
 
 echo ""
-echo "  ${BD}${G}🎮 tm - tmux 交互式教学管理工具${NC}"
+echo "  ${BD}${G}🎮 tm - Terminal Mentor 终端导航菜单${NC}"
 echo "  ${GR}────────────────────────────────────────${NC}"
 echo ""
 
+# 检查是否已安装（升级模式）
+UPGRADE_MODE=false
+if command -v tm &> /dev/null; then
+    CURRENT_VER=$(tm --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+    if [[ -n "$CURRENT_VER" ]]; then
+        echo "  ${GR}检测到已安装 tm v${CURRENT_VER}，将进行升级${NC}"
+        UPGRADE_MODE=true
+    fi
+fi
+echo ""
+
 # ── 第 1 步：检查 tmux ──
-echo "  ${BD}[1/4]${NC} 检查 tmux..."
+echo "  ${BD}[1/5]${NC} 检查 tmux..."
 
 if command -v tmux &> /dev/null; then
     TMUX_VER=$(tmux -V | cut -d' ' -f2)
@@ -51,7 +62,7 @@ fi
 
 # ── 第 2 步：安装 tm 命令 ──
 echo ""
-echo "  ${BD}[2/4]${NC} 安装 tm 命令..."
+echo "  ${BD}[2/5]${NC} 安装 tm 命令..."
 
 INSTALL_DIR="$HOME/.local/bin"
 mkdir -p "$INSTALL_DIR"
@@ -95,7 +106,7 @@ fi
 
 # ── 第 3 步：配置 tmux ──
 echo ""
-echo "  ${BD}[3/4]${NC} 配置 tmux..."
+echo "  ${BD}[3/5]${NC} 配置 tmux..."
 
 TMUX_CONF="$HOME/.tmux.conf"
 TM_MARKER="# [tm-managed] 以下配置由 tm 自动添加"
@@ -159,7 +170,7 @@ fi
 
 # ── 第 4 步：添加启动提示 ──
 echo ""
-echo "  ${BD}[4/4]${NC} 配置终端启动提示..."
+echo "  ${BD}[4/5]${NC} 配置终端启动提示..."
 
 SHELL_RC=""
 if [[ -f "$HOME/.zshrc" ]]; then
@@ -185,18 +196,38 @@ else
     echo "  ${Y}⚠️  未找到 .zshrc 或 .bashrc，跳过${NC}"
 fi
 
+# ── 第 5 步：创建插件目录 ──
+echo ""
+echo "  ${BD}[5/5]${NC} 初始化配置目录..."
+
+mkdir -p "$HOME/.tm/plugins"
+mkdir -p "$HOME/.config/tm"
+echo "  ${G}✅ 插件目录: ~/.tm/plugins/${NC}"
+
+if [[ ! -f "$HOME/.tmrc" ]]; then
+    echo "  ${GR}💡 可创建 ~/.tmrc 自定义设置（参考 .tmrc.example）${NC}"
+fi
+
 # ── 完成 ──
 echo ""
 echo "  ${GR}────────────────────────────────────────${NC}"
 echo ""
-echo "  ${BD}${G}🎉 安装完成！${NC}"
+
+NEW_VER=$(grep '^VERSION=' "$INSTALL_DIR/tm" 2>/dev/null | cut -d'"' -f2)
+if [[ "$UPGRADE_MODE" == "true" ]]; then
+    echo "  ${BD}${G}🎉 升级完成！${NC} ${GR}v${CURRENT_VER} → v${NEW_VER}${NC}"
+else
+    echo "  ${BD}${G}🎉 安装完成！${NC} ${GR}v${NEW_VER}${NC}"
+fi
 echo ""
 echo "  ${BD}现在你可以：${NC}"
-echo "  ${C}tm${NC}        打开交互式管理菜单"
-echo "  ${C}tm a${NC}      秒回 tmux 工作空间"
-echo "  ${C}tm new${NC}    创建新的工作空间"
-echo "  ${C}tm keys${NC}   学习快捷键"
-echo "  ${C}tm help${NC}   查看所有命令"
+echo "  ${C}tm${NC}            打开导航菜单"
+echo "  ${C}tm a${NC}          秒回 tmux 工作空间"
+echo "  ${C}tm new${NC}        创建新的工作空间"
+echo "  ${C}tm keys${NC}       学习快捷键"
+echo "  ${C}tm git${NC}        Git 操作中心"
+echo "  ${C}tm help${NC}       查看所有命令"
+echo "  ${C}tm update${NC}     检查更新"
 echo ""
 echo "  ${GR}💡 如果 tm 命令找不到，先运行：source ~/.zshrc${NC}"
 echo ""

@@ -1,0 +1,16 @@
+# ~/.tmrc — tm 配置文件
+# 复制到 ~/.tmrc 即可生效
+# ================================================
+
+# 是否显示"学一招"教学提示（默认 true）
+# 学会命令后可以关掉
+TM_SHOW_TEACH=true
+
+# 是否在终端启动时显示 tmux 状态（默认 true）
+TM_SHOW_STARTUP=true
+
+# 最大会话数限制（默认 8）
+TM_SESSION_LIMIT=8
+
+# 自定义项目导航路径（用于 tm j 命令）
+# TM_PROJECTS_DIR="$HOME/work"
