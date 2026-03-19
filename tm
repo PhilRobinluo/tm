@@ -813,67 +813,6 @@ do_sys_status() {
     pause
 }
 
-# ── 三生：一键进入 OpenClaw 对话 ──
-do_sansheng_shell() {
-    local session_name="maowu-shell"
-    local ssh_cmd="ssh -t lan-macbook-air 'sudo -u maowu -i'"
-
-    if tmux has-session -t "$session_name" 2>/dev/null; then
-        echo "  ${G}🐱 猫屋已经开着，推门进去...${NC}"
-    else
-        echo "  ${G}🐱 推开猫屋的门...${NC}"
-        tmux new-session -d -s "$session_name"
-        tmux send-keys -t "$session_name" "$ssh_cmd" Enter
-    fi
-
-    if in_tmux; then
-        tmux switch-client -t "$session_name"
-    else
-        tmux attach -t "$session_name"
-    fi
-}
-
-do_qihang_shell() {
-    local session_name="qihang-air"
-    local ssh_cmd="ssh -t lan-macbook-air"
-
-    if tmux has-session -t "$session_name" 2>/dev/null; then
-        echo "  ${G}🚀 启航已连接，切过去...${NC}"
-    else
-        echo "  ${G}🚀 连接启航...${NC}"
-        tmux new-session -d -s "$session_name"
-        tmux send-keys -t "$session_name" "$ssh_cmd" Enter
-    fi
-
-    if in_tmux; then
-        tmux switch-client -t "$session_name"
-    else
-        tmux attach -t "$session_name"
-    fi
-}
-
-do_sansheng_chat() {
-    local session_name="sansheng-chat"
-    local chat_cmd="ssh -t lan-macbook-air 'sudo -u maowu -i bash -c \"export PATH=/Users/maowu/.npm-global/bin:/Users/maowu/local/node/bin:\\\$PATH && openclaw repl 2>/dev/null || openclaw agent --local\"'"
-
-    if tmux has-session -t "$session_name" 2>/dev/null; then
-        echo "  ${G}💬 三生在等你说话...${NC}"
-    else
-        echo "  ${G}💬 叫醒三生...${NC}"
-        tmux new-session -d -s "$session_name"
-        # 先进入 maowu 环境，再启动交互式对话
-        tmux send-keys -t "$session_name" "ssh -t lan-macbook-air 'sudo -u maowu -i'" Enter
-        sleep 2
-        tmux send-keys -t "$session_name" "export PATH=\$HOME/.npm-global/bin:\$HOME/local/node/bin:\$PATH && echo '🐱 三生在听...' && while true; do echo -n '你: '; read msg; [[ \$msg == quit ]] && break; openclaw agent -m \"\$msg\" 2>/dev/null; echo; done" Enter
-    fi
-
-    if in_tmux; then
-        tmux switch-client -t "$session_name"
-    else
-        tmux attach -t "$session_name"
-    fi
-}
-
 # ── 功能8b：定时任务一览 ──
 do_cron() {
     clear
@@ -2427,9 +2366,6 @@ do_toolbox() {
         echo "       ${GR}（CPU、内存、磁盘、IP 一览）${NC}"
         echo ""
         echo "  ${BD}[t]${NC} ⏰ 定时任务"
-        echo "  ${BD}[s]${NC} 🐱 三生命令行（猫屋 maowu）"
-        echo "  ${BD}[a]${NC} 🚀 启航命令行（MBA qihang）"
-        echo "  ${BD}[c]${NC} 💬 和三生聊天"
         echo "  ${BD}[0]${NC} 返回主菜单"
         echo ""
         echo -n "  选择: "
@@ -2447,9 +2383,6 @@ do_toolbox() {
             8) do_archive ;;
             9) do_sys_status ;;
             t|T) do_cron ;;
-            s|S) do_sansheng_shell; return ;;
-            a|A) do_qihang_shell; return ;;
-            c|C) do_sansheng_chat; return ;;
             0|*) return ;;
         esac
     done
@@ -2550,8 +2483,6 @@ case "$1" in
         echo "  ${BD}其他：${NC}"
         echo "  ${C}tm startup${NC}    启动信息面板"
         echo "  ${C}tm cron${NC}       定时任务一览"
-        echo "  ${C}tm sync${NC}       同步 session 名 = Claude 标题"
-        echo "  ${C}tm limit${NC}      查看/设置窗口上限"
         echo "  ${C}tm update${NC}     检查并更新到最新版本"
         echo "  ${C}tm --version${NC}  显示版本号"
         echo "  ${C}tm help${NC}       显示此帮助"
@@ -2956,9 +2887,6 @@ case "$1" in
         teach "curl ifconfig.me" "一条命令查公网 IP"
         exit 0
         ;;
-    sansheng|三生|cat) do_sansheng_shell; exit 0 ;;
-    air|启航|qihang) do_qihang_shell; exit 0 ;;
-    chat|聊天) do_sansheng_chat; exit 0 ;;
 esac
 
 # 首次使用引导
